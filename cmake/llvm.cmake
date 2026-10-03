@@ -76,6 +76,10 @@ function(_download_llvm LLVM_VERSION)
 endfunction()
 
 function(setup_llvm LLVM_VERSION)
+    if(CLICE_USE_EXTERNAL_LLVM AND (NOT DEFINED LLVM_INSTALL_PATH OR LLVM_INSTALL_PATH STREQUAL ""))
+        message(FATAL_ERROR "CLICE_USE_EXTERNAL_LLVM requires LLVM_INSTALL_PATH")
+    endif()
+
     if(DEFINED LLVM_INSTALL_PATH AND NOT LLVM_INSTALL_PATH STREQUAL "")
         get_filename_component(LLVM_INSTALL_PATH "${LLVM_INSTALL_PATH}" ABSOLUTE)
         if(NOT EXISTS "${LLVM_INSTALL_PATH}/lib/cmake/llvm")
@@ -132,7 +136,9 @@ function(setup_llvm LLVM_VERSION)
 
     set(LLVM_INSTALL_PATH "${LLVM_INSTALL_PATH}" CACHE PATH "LLVM install" FORCE)
 
-    _check_llvm_manifest("${LLVM_INSTALL_PATH}")
+    if(NOT CLICE_USE_EXTERNAL_LLVM)
+        _check_llvm_manifest("${LLVM_INSTALL_PATH}")
+    endif()
 
     # LLVMConfig.cmake finds the archive's zlib and zstd through the prefix
     # path.

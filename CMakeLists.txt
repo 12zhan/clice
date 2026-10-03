@@ -16,6 +16,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
 option(CLICE_ENABLE_LTO "Enable ThinLTO for all targets" OFF)
 option(CLICE_OFFLINE_BUILD "Disable network downloads during configuration" OFF)
+option(CLICE_USE_EXTERNAL_LLVM "Use LLVM_INSTALL_PATH without xclang package validation" OFF)
 option(CLICE_ENABLE_TEST "Build unit tests" OFF)
 option(CLICE_ENABLE_BENCHMARK "Build benchmarks" OFF)
 

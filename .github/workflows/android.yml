@@ -1,0 +1,159 @@
+name: android-build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ANDROID_NDK_VERSION: 27.2.12479018
+  ANDROID_PLATFORM: 24
+  LLVM_VERSION: 23.1.2
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android toolchain
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-35" \
+            "cmake;3.31.6" \
+            "ndk;${ANDROID_NDK_VERSION}"
+
+      - name: Download LLVM source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/llvm"
+
+          curl --fail --location --retry 3 \
+            "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/llvm-project-${LLVM_VERSION}.src.tar.xz" \
+            --output "$RUNNER_TEMP/llvm-project.tar.xz"
+          echo "c98bbef08a2b4c2613cd50e9aa9ae7b69b1fe6c16b2c40373bc0ab6116fdf78a  $RUNNER_TEMP/llvm-project.tar.xz" \
+            | sha256sum --check --status
+          tar -xJf "$RUNNER_TEMP/llvm-project.tar.xz" -C "$RUNNER_TEMP/llvm"
+
+      - name: Build native LLVM tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          source="$RUNNER_TEMP/llvm/llvm-project-${LLVM_VERSION}.src/llvm"
+          cmake -S "$source" \
+            -B "$RUNNER_TEMP/native-tools-build" \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLLVM_ENABLE_PROJECTS='clang;clang-tools-extra' \
+            -DLLVM_TARGETS_TO_BUILD= \
+            -DLLVM_ENABLE_ZLIB=OFF \
+            -DLLVM_ENABLE_ZSTD=OFF \
+            -DLLVM_ENABLE_LIBXML2=OFF \
+            -DLLVM_ENABLE_LIBEDIT=OFF \
+            -DLLVM_ENABLE_TERMINFO=OFF \
+            -DLLVM_BUILD_LLVM_DYLIB=OFF \
+            -DLLVM_LINK_LLVM_DYLIB=OFF \
+            -DLLVM_PARALLEL_LINK_JOBS=1 \
+            -DLLVM_INCLUDE_TESTS=OFF \
+            -DLLVM_INCLUDE_EXAMPLES=OFF \
+            -DLLVM_INCLUDE_BENCHMARKS=OFF \
+            -DLLVM_INCLUDE_DOCS=OFF \
+            -DCLANG_ENABLE_CLANGD=OFF \
+            -DCLANG_INCLUDE_TESTS=OFF \
+            -DCLANG_INCLUDE_DOCS=OFF \
+            -DCLANG_TIDY_ENABLE_STATIC_ANALYZER=OFF \
+            -DCLANG_TIDY_ENABLE_QUERY_BASED_CUSTOM_CHECKS=OFF
+          cmake --build "$RUNNER_TEMP/native-tools-build" \
+            --target llvm-tblgen llvm-min-tblgen clang-tblgen clang-tidy-confusable-chars-gen \
+            --parallel "$(nproc)"
+
+      - name: Build LLVM and Clang for Android
+        shell: bash
+        run: |
+          set -euo pipefail
+          ndk="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
+          cmake -S "$RUNNER_TEMP/llvm/llvm-project-${LLVM_VERSION}.src/llvm" \
+            -B "$RUNNER_TEMP/llvm-build" \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/android-llvm" \
+            -DCMAKE_TOOLCHAIN_FILE="$ndk/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM="android-${ANDROID_PLATFORM}" \
+            -DANDROID_STL=c++_static \
+            -DLLVM_ENABLE_PROJECTS='clang;clang-tools-extra' \
+            -DLLVM_TARGETS_TO_BUILD=AArch64 \
+            -DLLVM_DEFAULT_TARGET_TRIPLE=aarch64-linux-android \
+            -DLLVM_HOST_TRIPLE=aarch64-linux-android \
+            -DLLVM_NATIVE_TOOL_DIR="$RUNNER_TEMP/native-tools-build/bin" \
+            -DLLVM_ENABLE_ZLIB=OFF \
+            -DLLVM_ENABLE_ZSTD=OFF \
+            -DLLVM_ENABLE_LIBXML2=OFF \
+            -DLLVM_ENABLE_LIBEDIT=OFF \
+            -DLLVM_ENABLE_TERMINFO=OFF \
+            -DLLVM_BUILD_LLVM_DYLIB=OFF \
+            -DLLVM_LINK_LLVM_DYLIB=OFF \
+            -DLLVM_PARALLEL_LINK_JOBS=1 \
+            -DLLVM_INCLUDE_TESTS=OFF \
+            -DLLVM_INCLUDE_EXAMPLES=OFF \
+            -DLLVM_INCLUDE_BENCHMARKS=OFF \
+            -DLLVM_INCLUDE_DOCS=OFF \
+            -DCLANG_ENABLE_CLANGD=OFF \
+            -DCLANG_BUILD_TOOLS=OFF \
+            -DCLANG_INCLUDE_TESTS=OFF \
+            -DCLANG_INCLUDE_DOCS=OFF \
+            -DCLANG_TIDY_ENABLE_STATIC_ANALYZER=OFF \
+            -DCLANG_TIDY_ENABLE_QUERY_BASED_CUSTOM_CHECKS=OFF
+          cmake --build "$RUNNER_TEMP/llvm-build" \
+            --target install \
+            --parallel "$(nproc)"
+
+      - name: Build clice for Android arm64
+        shell: bash
+        run: |
+          set -euo pipefail
+          ndk="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
+          cmake -S . -B build/android -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$ndk/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM="android-${ANDROID_PLATFORM}" \
+            -DANDROID_STL=c++_static \
+            -DCLICE_TARGET_TRIPLE=aarch64-linux-android \
+            -DCLICE_USE_EXTERNAL_LLVM=ON \
+            -DLLVM_INSTALL_PATH="$RUNNER_TEMP/android-llvm" \
+            -DCLICE_ENABLE_LTO=OFF \
+            -DCLICE_ENABLE_TEST=OFF \
+            -DCMAKE_EXE_LINKER_FLAGS=-static-libstdc++
+          cmake --build build/android --target clice --parallel "$(nproc)"
+          cmake --build build/android --target clice-pack --parallel "$(nproc)"
+          sha256sum build/android/clice.tar.gz > build/android/SHA256SUMS
+
+      - name: Upload Android package
+        uses: actions/upload-artifact@v7
+        with:
+          name: clice-android-arm64-v8a
+          path: |
+            build/android/clice.tar.gz
+            build/android/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
