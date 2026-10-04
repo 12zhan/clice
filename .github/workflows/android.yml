@@ -69,6 +69,7 @@ jobs:
             -DLLVM_TARGETS_TO_BUILD= \
             -DLLVM_ENABLE_ZLIB=OFF \
             -DLLVM_ENABLE_ZSTD=OFF \
+            -DLLVM_ENABLE_PLUGINS=OFF \
             -DLLVM_ENABLE_LIBXML2=OFF \
             -DLLVM_ENABLE_LIBEDIT=OFF \
             -DLLVM_ENABLE_TERMINFO=OFF \
@@ -109,6 +110,7 @@ jobs:
             -DLLVM_NATIVE_TOOL_DIR="$RUNNER_TEMP/native-tools-build/bin" \
             -DLLVM_ENABLE_ZLIB=OFF \
             -DLLVM_ENABLE_ZSTD=OFF \
+            -DLLVM_ENABLE_PLUGINS=OFF \
             -DLLVM_ENABLE_LIBXML2=OFF \
             -DLLVM_ENABLE_LIBEDIT=OFF \
             -DLLVM_ENABLE_TERMINFO=OFF \
