@@ -108,6 +108,8 @@ jobs:
             -DLLVM_DEFAULT_TARGET_TRIPLE=aarch64-linux-android \
             -DLLVM_HOST_TRIPLE=aarch64-linux-android \
             -DLLVM_NATIVE_TOOL_DIR="$RUNNER_TEMP/native-tools-build/bin" \
+            -DLLVM_DISTRIBUTIONS=Development \
+            -DLLVM_Development_DISTRIBUTION_COMPONENTS='clangAPINotes;clangAST;clangASTMatchers;clangAnalysis;clangAnalysisFlowSensitive;clangAnalysisFlowSensitiveModels;clangBasic;clangDependencyScanning;clangDriver;clangEdit;clangFormat;clangFrontend;clangIncludeCleaner;clangIndex;clangLex;clangOptions;clangParse;clangRewrite;clangScalableStaticAnalysisAnalyses;clangScalableStaticAnalysisCore;clangScalableStaticAnalysisFrontend;clangScalableStaticAnalysisSourceTransformation;clangSema;clangSerialization;clangSupport;clangTidy;clangTidyAbseilModule;clangTidyAlteraModule;clangTidyAndroidModule;clangTidyBoostModule;clangTidyBugproneModule;clangTidyCERTModule;clangTidyConcurrencyModule;clangTidyCppCoreGuidelinesModule;clangTidyDarwinModule;clangTidyFuchsiaModule;clangTidyGoogleModule;clangTidyLLVMLibcModule;clangTidyLLVMModule;clangTidyLinuxKernelModule;clangTidyMiscModule;clangTidyModernizeModule;clangTidyObjCModule;clangTidyOpenMPModule;clangTidyPerformanceModule;clangTidyPortabilityModule;clangTidyReadabilityModule;clangTidyUtils;clangTidyZirconModule;clangTooling;clangToolingCore;clangToolingInclusions;clangToolingInclusionsStdlib;clangToolingRefactoring;clangToolingSyntax;clangTransformer;clangUnifiedSymbolResolution;LLVMAggressiveInstCombine;LLVMAnalysis;LLVMAsmParser;LLVMBinaryFormat;LLVMBitReader;LLVMBitstreamReader;LLVMCore;LLVMDebugInfoBTF;LLVMDebugInfoCodeView;LLVMDebugInfoDWARF;LLVMDebugInfoDWARFLowLevel;LLVMDebugInfoGSYM;LLVMDebugInfoMSF;LLVMDebugInfoPDB;LLVMDemangle;LLVMFrontendAtomic;LLVMFrontendDirective;LLVMFrontendHLSL;LLVMFrontendOffloading;LLVMFrontendOpenMP;LLVMIRReader;LLVMInstCombine;LLVMMC;LLVMMCParser;LLVMObject;LLVMObjectYAML;LLVMOption;LLVMPlugins;LLVMProfileData;LLVMRemarks;LLVMScalarOpts;LLVMSupport;LLVMSymbolize;LLVMTargetParser;LLVMTextAPI;LLVMTransformUtils;LLVMWindowsDriver;LLVMX86Info;LLVMX86Desc;LLVMX86AsmParser;LLVMCodeGenTypes;LLVMMCDisassembler;llvm-headers;clang-headers;clang-tidy-headers;clang-resource-headers;development-cmake-exports;clang-development-cmake-exports;cmake-exports;clang-cmake-exports' \
             -DLLVM_ENABLE_ZLIB=OFF \
             -DLLVM_ENABLE_ZSTD=OFF \
             -DLLVM_ENABLE_PLUGINS=OFF \
@@ -128,7 +130,7 @@ jobs:
             -DCLANG_TIDY_ENABLE_STATIC_ANALYZER=OFF \
             -DCLANG_TIDY_ENABLE_QUERY_BASED_CUSTOM_CHECKS=OFF
           cmake --build "$RUNNER_TEMP/llvm-build" \
-            --target install \
+            --target install-development-distribution \
             --parallel "$(nproc)"
 
       - name: Build clice for Android arm64
